@@ -4,7 +4,7 @@
       <header class="header">
 
         <h1 v-if="formOn" class="title">{{ msg }}</h1>
-        <h1 v-else class="title"> Resultado </h1>
+        <h1 v-else class="title"> Result </h1>
         <button v-if="!formOn" @click="onVoltar()" type="button" class="btn btn-secondary" style="margin-top: 20px">Voltar</button>
       </header>
     <section v-if="formOn" class="form">
@@ -66,12 +66,12 @@
           <label for="company_size">Company_Size</label>
           <select class="input-select" id="company_size" v-model="company_size">
             <option disabled value=""> Number of Employees in the Company </option>
-            <option v-for="c in companys_size" :key="c" :value="c">{{c}}</option>
+            <option v-for="c in company_sizes" :key="c" :value="c">{{c}}</option>
           </select>
         </div>
         <div class="form-actions">
 
-          <button @click="onGravar()" type="submit" class="btn btn-primary">Confirm</button>
+          <button type="submit" class="btn btn-primary">Confirm</button>
           <button @click="onApagar()" type="button" class="btn btn-secondary">Delete</button>
         </div>
       </form>
@@ -84,8 +84,8 @@
 
 <script>
 import axios from 'axios'
-import {useToast} from "vue-toast-notification";
-
+import { toast } from 'vue3-toastify'
+import 'vue3-toastify/dist/index.css'
 export default {
 
   name: "FormPrevisao",
@@ -94,9 +94,9 @@ export default {
   },
   data() {
     return { experience:"", country:"", education:"", languages:"", frameworks:"", company_size:"", formOn: true,
-    countries: ["Brazil", "EUA"],
-    educations: ["teste"],
-    companys_size:["teste"]
+    countries: ["Brazil", "Australia", "Canada", "France", "Germany", "India", "Japan", "Singapore", "UK", "USA"],
+    educations: ["Bachelors", "High School", "Masters", "PhD", "Some College"],
+    company_sizes:["1-10", "11-50", "51-200","201-1000",  "1001-5000", "5000+"]
     }
   },
   methods: {
@@ -113,12 +113,14 @@ export default {
         this.onDesmarcarSelect()
         this.mostrarForm(false)
       }
-
-
+      else
+      {
+        this.mostrarErro()
+      }
     },
     onApagar()
     {
-      this.experience = "", this.country = "", this.education = "", this.languages = "", this.frameworks= "", this.company_size=""
+      this.experience = 0, this.country = "", this.education = "", this.languages = "", this.frameworks= "", this.company_size=""
       this.onDesmarcarSelect()
     },
     onVoltar()
@@ -182,10 +184,16 @@ export default {
     },
     isValido()
     {
-      if (this.experience !== "" && this.country !== "" && this.education !== "" && this.languages !== "" && this.frameworks !== "" && this.company_size !== "")
+      if (this.experience >= 0 && this.country !== "" && this.education !== "" && this.languages !== "" && this.frameworks !== "" && this.company_size !== "")
         return true;
       return false;
     },
+    mostrarErro()
+    {
+        toast.error("Campo(s) Não Preenchido(s)", {
+            autoClose: 2000,
+        });
+    }
 
 
 
