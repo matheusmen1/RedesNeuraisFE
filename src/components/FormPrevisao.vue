@@ -4,8 +4,17 @@
       <header class="header">
 
         <h1 v-if="formOn" class="title">{{ msg }}</h1>
-        <h1 v-else class="title"> Result </h1>
-        <button v-if="!formOn" @click="onVoltar()" type="button" class="btn btn-secondary" style="margin-top: 20px">Voltar</button>
+        <template v-else>
+          <h1  class="title"> Result </h1>
+
+          <h2 class="resultado"> {{ this.valorFormatadoUSD(this.salary_usd.data) }} per year </h2>
+          <h2 class="resultado"> {{ this.valorFormatadoUSD(this.salary_usd.data/12) }} per month </h2>
+          <h2 class="resultado"> {{ this.valorFormatadoBRL(this.salary_usd.data * 5.10) }} per year </h2>
+          <h2 class="resultado"> {{ this.valorFormatadoBRL((this.salary_usd.data * 5.10)/12)}} per month </h2>
+
+        </template>
+
+        <button v-if="!formOn" @click="onVoltar()" type="button" class="btn btn-secondary" style="margin-top: 20px">Back</button>
       </header>
     <section v-if="formOn" class="form">
       <form @submit.prevent="this.onGravar()" >
@@ -93,10 +102,13 @@ export default {
     msg: String
   },
   data() {
-    return { experience:"", country:"", education:"", languages:"", frameworks:"", company_size:"", formOn: true,
+    return { experience:"", country:"", education:"", company_size:"", formOn: true,
+    languages:[],
+    frameworks:[],
     countries: ["Brazil", "Australia", "Canada", "France", "Germany", "India", "Japan", "Singapore", "UK", "USA"],
     educations: ["Bachelors", "High School", "Masters", "PhD", "Some College"],
-    company_sizes:["1-10", "11-50", "51-200","201-1000",  "1001-5000", "5000+"]
+    company_sizes:["1-10", "11-50", "51-200","201-1000",  "1001-5000", "5000+"],
+    salary_usd: ""
     }
   },
   methods: {
@@ -109,27 +121,53 @@ export default {
       this.onVerificarSelecionados()
       if (this.isValido())
       {
-        this.onApagar()
-        this.onDesmarcarSelect()
-        this.mostrarForm(false)
+        console.log("SAIDA FINAL:")
+        console.log("experience: "+this.experience)
+        console.log("country: "+this.country)
+        console.log("education: "+this.education)
+        console.log("company_size: "+this.company_size)
+        console.log("languages: "+this.languages)
+        console.log("frameworks: "+this.frameworks)
+        const url = 'http://localhost:5000/previsao';
+        const data = {
+          experience:this.experience, country:this.country, education:this.education, languages:this.languages, frameworks:this.frameworks,
+          company_size:this.company_size,
+        };
+        axios.post(url, data)
+            .then(response => {
+              console.log(response)
+              this.mostrarSucesso("Previsão Realizada com Sucesso")
+              this.onApagar()
+              this.onDesmarcarSelect()
+              this.mostrarForm(false)
+              this.salary_usd = response;
+            })
+            .catch(error => {
+              console.log("Erro: ",error);
+              this.mostrarErro("Erro ao Acessar Endpoint")
+            })
+
       }
       else
       {
-        this.mostrarErro()
+        this.mostrarErro("Campo(s) Não Preenchido(s)")
       }
     },
     onApagar()
     {
-      this.experience = 0, this.country = "", this.education = "", this.languages = "", this.frameworks= "", this.company_size=""
+      this.experience = "", this.country = "",  this.frameworks = [], this.languages = [], this.company_size="", this.education = "", this.salary_usd = ""
       this.onDesmarcarSelect()
     },
     onVoltar()
     {
       this.onApagar()
       this.formOn = true
+      this.salary_usd = ""
     },
     onVerificarSelecionados()
     {
+      this.frameworks = []
+      this.languages = []
       let checkBox = document.querySelectorAll('input[type="checkbox"]')
       let i = 0;
       while (i < checkBox.length)
@@ -139,27 +177,36 @@ export default {
           console.log(checkBox[i].value);
           if (this.isLanguage(checkBox[i].value))
           {
-            checkBox[i].value = checkBox[i].value.replace(/l/g, "")
-            console.log("NOVO: "+checkBox[i].value);
-            if (this.languages.length > 0)
-              this.languages = this.languages + ", " + checkBox[i].value;
-            else
-              this.languages = checkBox[i].value;
+            let valor = checkBox[i].value.replace(/l/g, "")
+            console.log("NOVO: "+valor);
+            this.languages.push(valor);
+
           }
           else
           {
-            if (this.frameworks.length > 0)
-              this.frameworks = this.frameworks + ", " + checkBox[i].value;
-            else
-              this.frameworks = this.frameworks + checkBox[i].value;
-
+            this.frameworks.push(checkBox[i].value);
           }
         }
         i++;
 
       }
-      console.log("FRAMEWORKES: "+this.frameworks);
-      console.log("LANGUAGES: "+this.languages);
+
+      this.onExibir();
+    },
+    onExibir()
+    {
+      let i = 0;
+      while (i < this.frameworks.length)
+      {
+        console.log(this.frameworks[i]);
+        i++;
+      }
+      i = 0;
+      while (i < this.languages.length)
+      {
+        console.log(this.languages[i]);
+        i++;
+      }
     },
     onDesmarcarSelect()
     {
@@ -172,10 +219,6 @@ export default {
         i++;
       }
     },
-    onCarregarDados()
-    {
-
-    },
     isLanguage(value)
     {
       if (value.at(0) === 'l')
@@ -184,19 +227,38 @@ export default {
     },
     isValido()
     {
-      if (this.experience >= 0 && this.country !== "" && this.education !== "" && this.languages !== "" && this.frameworks !== "" && this.company_size !== "")
+      if ((this.experience !== "" && this.experience >= 0) && this.country !== "" && this.education !== "" && this.languages.length > 0 && this.frameworks.length > 0 && this.company_size !== "")
         return true;
       return false;
     },
-    mostrarErro()
+    mostrarErro(msg)
     {
-        toast.error("Campo(s) Não Preenchido(s)", {
+        toast.error(msg, {
             autoClose: 2000,
         });
+    },
+    mostrarSucesso(msg)
+    {
+      toast.success(msg, {
+        autoClose: 2000,
+      });
+    },
+    valorFormatadoUSD(valor)
+    {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 0
+      }).format(valor)
+    },
+    valorFormatadoBRL(valor)
+    {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        maximumFractionDigits: 0
+      }).format(valor)
     }
-
-
-
   },
 
 }
@@ -236,7 +298,14 @@ export default {
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
   letter-spacing: 1.5px;
 }
-
+.resultado{
+  margin-top: 10px;
+  color: #333;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 1.5px;
+}
 .form-group {
   margin-bottom: 15px;
 }
